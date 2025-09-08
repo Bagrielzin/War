@@ -44,7 +44,7 @@ class Game:
                     return
 
                 # Reforços antes do ataque
-                self._reforcos_pos_ataque(jogador)
+                self._reforcos_pre_ataque(jogador)
 
                 # Escolhe alvo e ataca
                 alvo = self._possiveis_alvos(jogador)
@@ -99,7 +99,6 @@ class Game:
             print(f"[REFORÇOS] {jogador.nome} recebeu {reforcos} tropas adicionais distribuídas aleatoriamente.")
 
     def verificar_vitoria(self, jogador):
-        # Atualiza para salvar mensagem de vitória personalizada
         conditions = [
             (DominarAmericas(jogador), f"{jogador.nome} dominou toda a América"),
             (DominarEuropa(jogador), f"{jogador.nome} dominou toda a Europa"),
@@ -128,7 +127,6 @@ class Game:
         if self.vitoria_condicao:
             print(self.vitoria_condicao)
 
-            # Lista de países da condição de vitória
             if "América" in self.vitoria_condicao:
                 paises = sorted(continentes["america_do_sul"] + continentes["america_central_norte"])
             elif "Europa" in self.vitoria_condicao:
@@ -150,6 +148,3 @@ class Game:
                 tropas = self.territories[t]["troops"]
                 print(f"  - {t}: {tropas} tropas")
             print("-----------------------------------\n")
-
-
-

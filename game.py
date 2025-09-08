@@ -37,7 +37,7 @@ class Game:
     def jogar(self, jogador):
         while not self.winner:
             # Reforços antes do ataque
-            self._reforcos_pos_ataque(jogador)
+            self._reforcos_pre_ataque(jogador)
 
             # Escolhe alvo e ataca
             alvo = self._possiveis_alvos(jogador)
@@ -82,7 +82,7 @@ class Game:
               f"({tropas_ataque} vs {tropas_defesa}) | Chance: {chance}% | "
               f"{'Vitória' if sucesso else 'Derrota'} ")
 
-    def _reforcos_pos_ataque(self, jogador):
+    def _reforcos_pre_ataque(self, jogador):
         territorios_jogador = [t for t, d in self.territories.items() if d["owner"] == jogador.nome]
         reforcos = max(1, len(territorios_jogador) // 4)
         for _ in range(reforcos):

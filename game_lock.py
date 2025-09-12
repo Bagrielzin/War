@@ -21,10 +21,10 @@ class Game:
         self.territories = {}
         self._distribuir_territorios_iniciais()
 
+    # ==== CONFIGURAÇÃO INICIAL ====
     def _distribuir_territorios_iniciais(self):
         random.shuffle(self.todos_territorios)
         qtd_jogadores = len(self.players)
-
         for i, territorio in enumerate(self.todos_territorios):
             jogador = self.players[i % qtd_jogadores]
             self.territories[territorio] = {"owner": jogador.nome, "troops": 1}
@@ -36,13 +36,19 @@ class Game:
                 escolha = random.choice(territorios_jogador)
                 self.territories[escolha]["troops"] += 1
 
+    # ==== LOOP PRINCIPAL ====
+    def iniciar_jogo(self):
+        threads = [threading.Thread(target=self.jogar, args=(j,)) for j in self.players]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+
+        self.exibir_estatisticas_finais()
 
     def jogar(self, jogador):
-        while True:
+        while not self.winner:
             with self.lock:
-                if self.winner:
-                    return
-
                 # Reforços antes do ataque
                 self._reforcos_pre_ataque(jogador)
 
@@ -57,6 +63,16 @@ class Game:
                     return
 
             time.sleep(0.05)
+
+    # ==== AÇÕES DO TURNO ====
+    def _reforcos_pre_ataque(self, jogador):
+        territorios_jogador = [t for t, d in self.territories.items() if d["owner"] == jogador.nome]
+        reforcos = max(1, len(territorios_jogador) // 4)
+        for _ in range(reforcos):
+            terr = random.choice(territorios_jogador)
+            self.territories[terr]["troops"] += 1
+        if reforcos > 0:
+            print(f"\n[REFORÇOS] {jogador.nome} recebeu {reforcos} tropas adicionais distribuídas aleatoriamente.")
 
     def _possiveis_alvos(self, jogador):
         possiveis = []
@@ -85,19 +101,11 @@ class Game:
         else:
             self.territories[origem]["troops"] -= 1
 
-        print(f"[ATAQUE] {jogador.nome} atacou {dono_anterior} de {origem} para {destino} "
+        print(f"\n[ATAQUE] {jogador.nome} atacou {dono_anterior} de {origem} para {destino} "
               f"({tropas_ataque} vs {tropas_defesa}) | Chance: {chance}% | "
-              f"{'Vitória' if sucesso else 'Derrota'} \n")
+              f"{'Vitória' if sucesso else 'Derrota'} ")
 
-    def _reforcos_pre_ataque(self, jogador):
-        territorios_jogador = [t for t, d in self.territories.items() if d["owner"] == jogador.nome]
-        reforcos = max(1, len(territorios_jogador) // 4)
-        for _ in range(reforcos):
-            terr = random.choice(territorios_jogador)
-            self.territories[terr]["troops"] += 1
-        if reforcos > 0:
-            print(f"[REFORÇOS] {jogador.nome} recebeu {reforcos} tropas adicionais distribuídas aleatoriamente.")
-
+    # ==== CONDIÇÕES DE VITÓRIA ====
     def verificar_vitoria(self, jogador):
         conditions = [
             (DominarAmericas(jogador), f"{jogador.nome} dominou toda a América"),
@@ -113,20 +121,11 @@ class Game:
                 return True
         return False
 
-    def iniciar_jogo(self):
-        threads = [threading.Thread(target=self.jogar, args=(j,)) for j in self.players]
-        for t in threads:
-            t.start()
-        for t in threads:
-            t.join()
-
-        self.exibir_estatisticas_finais()
-
+    # ==== FINALIZAÇÃO ====
     def exibir_estatisticas_finais(self):
         print("\n===== {} venceu o jogo!! =====".format(self.winner))
         if self.vitoria_condicao:
             print(self.vitoria_condicao)
-
             if "América" in self.vitoria_condicao:
                 paises = sorted(continentes["america_do_sul"] + continentes["america_central_norte"])
             elif "Europa" in self.vitoria_condicao:
@@ -137,7 +136,6 @@ class Game:
                 paises = sorted(continentes["asia_oceania"])
             else:
                 paises = []
-
             print(f"Países da condição de vitória: {paises}")
 
         print("\n=== Estatísticas Finais do Jogo ===\n")

@@ -1,5 +1,5 @@
 from jogador import Jogador
-from game_lock import Game
+from game import Game
 from continent import continentes
 
 def main():

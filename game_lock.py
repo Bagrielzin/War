@@ -12,14 +12,25 @@ def pode_atacar(origem, destino):
     return (origem, destino) in conexoes_extras or (destino, origem) in conexoes_extras
 
 class Game:
-    def __init__(self, players, todos_territorios):
+    def __init__(self, players, todos_territorios, respect_order=False):
         self.players = players
         self.todos_territorios = todos_territorios
-        self.lock = threading.Lock()
+        self.lock = threading.Lock()                # protege estrutura de territórios
+        self.condition = threading.Condition()      # coordena turnos ordenados
         self.winner = None
         self.vitoria_condicao = None
         self.territories = {}
+        self.respect_order = respect_order
+
+        # scheduling / ordem fixa
+        self.play_order = []     # lista de nomes na ordem de jogada
+        self.turn_index = 0      # índice atual na play_order
+
         self._distribuir_territorios_iniciais()
+        if self.respect_order:
+            self._schedule_players()
+        else:
+            print("\n[MODO LIVRE] Jogadores poderão jogar em qualquer momento.\n")
 
     # ==== CONFIGURAÇÃO INICIAL ====
     def _distribuir_territorios_iniciais(self):
@@ -33,8 +44,18 @@ class Game:
         for jogador in self.players:
             for _ in range(tropas_extras_por_jogador):
                 territorios_jogador = [t for t, d in self.territories.items() if d["owner"] == jogador.nome]
-                escolha = random.choice(territorios_jogador)
-                self.territories[escolha]["troops"] += 1
+                if territorios_jogador:
+                    escolha = random.choice(territorios_jogador)
+                    self.territories[escolha]["troops"] += 1
+
+    def _schedule_players(self):
+        prioridades = {p.nome: random.randint(1, 100) for p in self.players}
+        ordenado = sorted(self.players, key=lambda p: prioridades[p.nome], reverse=True)
+        self.play_order = [p.nome for p in ordenado]
+        print("\n=== Ordem de jogada definida (priority scheduling simulado) ===")
+        for i, p in enumerate(ordenado, start=1):
+            print(f"{i}. {p.nome} (prioridade: {prioridades[p.nome]})")
+        print("=============================================================\n")
 
     # ==== LOOP PRINCIPAL ====
     def iniciar_jogo(self):
@@ -49,28 +70,80 @@ class Game:
     def jogar(self, jogador):
         while not self.winner:
             with self.lock:
-                # Reforços antes do ataque
-                self._reforcos_pre_ataque(jogador)
+                territorios_jogador = [t for t, d in self.territories.items() if d["owner"] == jogador.nome]
+            if not territorios_jogador:
+                if self.respect_order:
+                    with self.condition:
+                        if self.play_order and self.play_order[self.turn_index] == jogador.nome:
+                            self._advance_turn()
+                            self.condition.notify_all()
+                print(f"[ELIMINADO] {jogador.nome} não possui mais territórios e saiu do jogo.")
+                return
 
-                # Escolhe alvo e ataca
-                alvo = self._possiveis_alvos(jogador)
-                if alvo:
-                    self.realizar_ataque(jogador, alvo)
+            if self.respect_order:
+                with self.condition:
+                    while not self.winner and self.play_order[self.turn_index] != jogador.nome:
+                        self.condition.wait()
 
-                # Verifica vitória após ataque
-                if self.verificar_vitoria(jogador):
-                    self.winner = jogador.nome
-                    return
+                    if self.winner:
+                        return
 
-            time.sleep(0.05)
+                    with self.lock:
+                        self._reforcos_pre_ataque(jogador)
+
+                        alvo = self._possiveis_alvos(jogador)
+                        if alvo:
+                            self.realizar_ataque(jogador, alvo)
+
+                        if self.verificar_vitoria(jogador):
+                            self.winner = jogador.nome
+                            self.condition.notify_all()
+                            return
+
+                    self._advance_turn()
+                    self.condition.notify_all()
+
+            else:
+                with self.lock:
+                    self._reforcos_pre_ataque(jogador)
+
+                    alvo = self._possiveis_alvos(jogador)
+                    if alvo:
+                        self.realizar_ataque(jogador, alvo)
+
+                    if self.verificar_vitoria(jogador):
+                        self.winner = jogador.nome
+                        return
+
+                time.sleep(0.05)
+
+    def _advance_turn(self):
+        total_players = len(self.play_order)
+        if total_players == 0:
+            return
+
+        for _ in range(total_players):
+            self.turn_index = (self.turn_index + 1) % total_players
+            candidato = self.play_order[self.turn_index]
+            with self.lock:
+                territorios_cand = [t for t, d in self.territories.items() if d["owner"] == candidato]
+            if territorios_cand:
+                return
+
+        with self.lock:
+            mapa = {p.nome: [t for t, d in self.territories.items() if d["owner"] == p.nome] for p in self.players}
+        vivos = [nome for nome, ts in mapa.items() if ts]
+        if len(vivos) == 1:
+            self.winner = vivos[0]
 
     # ==== AÇÕES DO TURNO ====
     def _reforcos_pre_ataque(self, jogador):
         territorios_jogador = [t for t, d in self.territories.items() if d["owner"] == jogador.nome]
         reforcos = max(1, len(territorios_jogador) // 4)
         for _ in range(reforcos):
-            terr = random.choice(territorios_jogador)
-            self.territories[terr]["troops"] += 1
+            if territorios_jogador:
+                terr = random.choice(territorios_jogador)
+                self.territories[terr]["troops"] += 1
         if reforcos > 0:
             print(f"\n[REFORÇOS] {jogador.nome} recebeu {reforcos} tropas adicionais distribuídas aleatoriamente.")
 
@@ -119,6 +192,10 @@ class Game:
             if cond.check(mapa):
                 self.vitoria_condicao = mensagem
                 return True
+        vivos = [p.nome for p in self.players if any(d["owner"] == p.nome for d in self.territories.values())]
+        if len(vivos) == 1:
+            self.vitoria_condicao = f"{vivos[0]} eliminou todos os outros jogadores"
+            return True
         return False
 
     # ==== FINALIZAÇÃO ====

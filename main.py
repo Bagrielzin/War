@@ -1,5 +1,5 @@
 from jogador import Jogador
-from game import Game
+from game_lock import Game
 from continent import continentes
 
 def main():
@@ -18,6 +18,16 @@ def main():
         nome = input(f"Nome do jogador {i+1}: ")
         jogadores.append(Jogador(nome))
 
+    # Escolha do modo de sincronização
+    print("\nEscolha o modo de sincronização:")
+    print("1 - Rodadas ordenadas: cada jogador joga uma vez por rodada)")
+    print("2 - Livre : jogador pode jogar mais de uma vez por rodada")
+    escolha = ""
+    while escolha not in ("1", "2"):
+        escolha = input("Sua escolha (1/2): ").strip()
+
+    respect_order = escolha == "1"
+
     # Criação da lista completa de territórios
     todos_territorios = (
         continentes["america_do_sul"] +
@@ -28,7 +38,7 @@ def main():
     )
 
     # Inicialização e início do jogo
-    g = Game(jogadores, todos_territorios)
+    g = Game(jogadores, todos_territorios, respect_order=respect_order)
     g.iniciar_jogo()
 
 if __name__ == "__main__":

@@ -26,11 +26,15 @@ class Game:
         self.play_order = []     # lista de nomes na ordem de jogada
         self.turn_index = 0      # índice atual na play_order
 
+        # contador de rodadas
+        self.round_counter = 1
+
         self._distribuir_territorios_iniciais()
         if self.respect_order:
-            self._schedule_players()
+            self._schedule_players_priority()
         else:
-            print("\n[MODO LIVRE] Jogadores poderão jogar em qualquer momento.\n")
+            self._schedule_players_round_robin()
+        print(f"\n=== Rodada {self.round_counter} ===")
 
     # ==== CONFIGURAÇÃO INICIAL ====
     def _distribuir_territorios_iniciais(self):
@@ -48,14 +52,21 @@ class Game:
                     escolha = random.choice(territorios_jogador)
                     self.territories[escolha]["troops"] += 1
 
-    def _schedule_players(self):
+    def _schedule_players_priority(self):
         prioridades = {p.nome: random.randint(1, 100) for p in self.players}
         ordenado = sorted(self.players, key=lambda p: prioridades[p.nome], reverse=True)
         self.play_order = [p.nome for p in ordenado]
-        print("\n=== Ordem de jogada definida (priority scheduling simulado) ===")
+        print("\n=== Ordem de jogada (Priority Scheduling) ===")
         for i, p in enumerate(ordenado, start=1):
             print(f"{i}. {p.nome} (prioridade: {prioridades[p.nome]})")
-        print("=============================================================\n")
+        print("=============================================\n")
+
+    def _schedule_players_round_robin(self):
+        self.play_order = [p.nome for p in self.players]
+        print("\n=== Ordem de jogada (Round Robin) ===")
+        for i, nome in enumerate(self.play_order, start=1):
+            print(f"{i}. {nome}")
+        print("=====================================\n")
 
     # ==== LOOP PRINCIPAL ====
     def iniciar_jogo(self):
@@ -72,38 +83,20 @@ class Game:
             with self.lock:
                 territorios_jogador = [t for t, d in self.territories.items() if d["owner"] == jogador.nome]
             if not territorios_jogador:
-                if self.respect_order:
-                    with self.condition:
-                        if self.play_order and self.play_order[self.turn_index] == jogador.nome:
-                            self._advance_turn()
-                            self.condition.notify_all()
+                with self.condition:
+                    if self.play_order and self.play_order[self.turn_index] == jogador.nome:
+                        self._advance_turn()
+                        self.condition.notify_all()
                 print(f"[ELIMINADO] {jogador.nome} não possui mais territórios e saiu do jogo.")
                 return
 
-            if self.respect_order:
-                with self.condition:
-                    while not self.winner and self.play_order[self.turn_index] != jogador.nome:
-                        self.condition.wait()
+            with self.condition:
+                while not self.winner and self.play_order[self.turn_index] != jogador.nome:
+                    self.condition.wait()
 
-                    if self.winner:
-                        return
+                if self.winner:
+                    return
 
-                    with self.lock:
-                        self._reforcos_pre_ataque(jogador)
-
-                        alvo = self._possiveis_alvos(jogador)
-                        if alvo:
-                            self.realizar_ataque(jogador, alvo)
-
-                        if self.verificar_vitoria(jogador):
-                            self.winner = jogador.nome
-                            self.condition.notify_all()
-                            return
-
-                    self._advance_turn()
-                    self.condition.notify_all()
-
-            else:
                 with self.lock:
                     self._reforcos_pre_ataque(jogador)
 
@@ -113,10 +106,13 @@ class Game:
 
                     if self.verificar_vitoria(jogador):
                         self.winner = jogador.nome
+                        self.condition.notify_all()
                         return
 
-                time.sleep(0.05)
+                self._advance_turn()
+                self.condition.notify_all()
 
+    # ==== CONTROLE DE TURNOS ====
     def _advance_turn(self):
         total_players = len(self.play_order)
         if total_players == 0:
@@ -128,11 +124,15 @@ class Game:
             with self.lock:
                 territorios_cand = [t for t, d in self.territories.items() if d["owner"] == candidato]
             if territorios_cand:
+                # Se o turno voltou ao primeiro jogador, incrementa rodada
+                if self.turn_index == 0:
+                    self.round_counter += 1
+                    print(f"\n=== Rodada {self.round_counter} ===")
                 return
 
+        # Se sobrar apenas um jogador vivo
         with self.lock:
-            mapa = {p.nome: [t for t, d in self.territories.items() if d["owner"] == p.nome] for p in self.players}
-        vivos = [nome for nome, ts in mapa.items() if ts]
+            vivos = [p.nome for p in self.players if any(d["owner"] == p.nome for d in self.territories.values())]
         if len(vivos) == 1:
             self.winner = vivos[0]
 
@@ -201,6 +201,7 @@ class Game:
     # ==== FINALIZAÇÃO ====
     def exibir_estatisticas_finais(self):
         print("\n===== {} venceu o jogo!! =====".format(self.winner))
+        print(f"Total de rodadas: {self.round_counter}")
         if self.vitoria_condicao:
             print(self.vitoria_condicao)
             if "América" in self.vitoria_condicao:

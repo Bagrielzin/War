@@ -20,8 +20,8 @@ def main():
 
     # Escolha do modo de sincronização
     print("\nEscolha o modo de sincronização:")
-    print("1 - Rodadas ordenadas: cada jogador joga uma vez por rodada)")
-    print("2 - Livre : jogador pode jogar mais de uma vez por rodada")
+    print("1 - Ordem dos jogadores definidas aleatoriamente (Priority Scheduling)")
+    print("2 - Ordem dos jogadores do primeiro ao último (Round Robin Scheduling)")
     escolha = ""
     while escolha not in ("1", "2"):
         escolha = input("Sua escolha (1/2): ").strip()

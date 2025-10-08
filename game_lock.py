@@ -56,10 +56,12 @@ class Game:
         prioridades = {p.nome: random.randint(1, 100) for p in self.players}
         ordenado = sorted(self.players, key=lambda p: prioridades[p.nome], reverse=True)
         self.play_order = [p.nome for p in ordenado]
-        print("\n=== Ordem de jogada (Priority Scheduling) ===")
+        
+        print("\n=== Ordem de jogada (Priority Scheduling - nova rodada) ===")
         for i, p in enumerate(ordenado, start=1):
             print(f"{i}. {p.nome} (prioridade: {prioridades[p.nome]})")
-        print("=============================================\n")
+        print("==========================================================\n")
+
 
     def _schedule_players_round_robin(self):
         self.play_order = [p.nome for p in self.players]
@@ -128,6 +130,9 @@ class Game:
                 if self.turn_index == 0:
                     self.round_counter += 1
                     print(f"\n=== Rodada {self.round_counter} ===")
+
+                    if self.respect_order:
+                        self._schedule_players_priority()
                 return
 
         # Se sobrar apenas um jogador vivo

@@ -21,7 +21,7 @@ def main():
     # Escolha do modo de sincronização
     print("\nEscolha o modo de sincronização:")
     print("1 - Ordem dos jogadores definidas aleatoriamente (Priority Scheduling)")
-    print("2 - Ordem dos jogadores do primeiro ao último (Round Robin Scheduling)")
+    print("2 - Ordem dos jogadores do primeiro ao último (FCFS)")
     escolha = ""
     while escolha not in ("1", "2"):
         escolha = input("Sua escolha (1/2): ").strip()

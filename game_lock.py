@@ -33,7 +33,7 @@ class Game:
         if self.respect_order:
             self._schedule_players_priority()
         else:
-            self._schedule_players_round_robin()
+            self._schedule_players_first_to_last()
         print(f"\n=== Rodada {self.round_counter} ===")
 
     # ==== CONFIGURAÇÃO INICIAL ====
@@ -63,7 +63,7 @@ class Game:
         print("==========================================================\n")
 
 
-    def _schedule_players_round_robin(self):
+    def _schedule_players_first_to_last(self):
         self.play_order = [p.nome for p in self.players]
         print("\n=== Ordem de jogada (Round Robin) ===")
         for i, nome in enumerate(self.play_order, start=1):

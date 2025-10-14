@@ -19,8 +19,8 @@ def main():
         jogadores.append(Jogador(nome))
 
     # Escolha do modo de sincronização
-    print("\nEscolha o modo de sincronização:")
-    print("1 - Ordem dos jogadores definidas aleatoriamente (Priority Scheduling)")
+    print("Escolha o modo de sincronização:")
+    print("1 - Ordem dos jogadores definidas aleatoriamente a cada rodada (Priority Scheduling)")
     print("2 - Ordem dos jogadores do primeiro ao último (FCFS)")
     escolha = ""
     while escolha not in ("1", "2"):

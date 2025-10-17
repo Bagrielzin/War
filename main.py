@@ -22,11 +22,10 @@ def main():
     print("Escolha o modo de sincronização:")
     print("1 - Ordem dos jogadores definidas aleatoriamente a cada rodada (Priority Scheduling)")
     print("2 - Ordem dos jogadores do primeiro ao último (FCFS)")
+    print("3 - Modo de jogo livre, sem lock e scheduling")
     escolha = ""
-    while escolha not in ("1", "2"):
-        escolha = input("Sua escolha (1/2): ").strip()
-
-    respect_order = escolha == "1"
+    while escolha not in ("1", "2", "3"):
+        escolha = input("Sua escolha (1/2/3): ").strip()
 
     # Criação da lista completa de territórios
     todos_territorios = (
@@ -37,9 +36,16 @@ def main():
         continentes["africa"]
     )
 
-    # Inicialização e início do jogo
-    g = Game(jogadores, todos_territorios, respect_order=respect_order)
-    g.iniciar_jogo()
+    if escolha == ("1", "2"):
+        from game_lock import Game
+        respect_order = escolha == "1"
+        g = Game(jogadores, todos_territorios, respect_order=respect_order)
+        g.iniciar_jogo()
+
+    else:
+        from game import Game
+        g = Game(jogadores, todos_territorios)
+        g.iniciar_jogo()
 
 if __name__ == "__main__":
     main()
